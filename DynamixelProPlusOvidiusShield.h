@@ -35,6 +35,10 @@ extern int32_t dxl_accel_limit[DXL_ID_SIZE];
 extern int32_t dxl_prof_vel[DXL_ID_SIZE];
 extern int32_t dxl_prof_accel[DXL_ID_SIZE];
 
+// Data Packaging
+typedef struct sw_data{
+  int32_t goal_position;
+} __attribute__((packed)) sw_data_t;
 
 // Function Nomenclature
 
@@ -50,12 +54,23 @@ class DynamixelProPlusOvidiusShield
 { 
  public:
     int led_change = 0;                         // global value to see led colours changing after each movement completes(just for simple visualization)
-
+    // Primary Functions
     DynamixelProPlusOvidiusShield(uint8_t *DxlIDs);
 
-    bool blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times);
+    bool setDynamixelsTorqueON(uint8_t *DxlIDs, int DxlIds_size, Dynamixel2Arduino dxl);
 
-    bool pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, DynamixelShield dxl);
+    bool setDynamixelsTorqueOFF(uint8_t *DxlIDs, int DxlIds_size, Dynamixel2Arduino dxl);
+
+    bool setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, Dynamixel2Arduino dxl);
+
+    bool blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl);
+
+    bool pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, int *error_code, Dynamixel2Arduino dxl);
+
+    bool syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array, DynamixelShield dxl);
+
+    // AUXILIARY FUNCTIONS
+    bool check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl);
 
     uint32_t convertRadian2DxlPulses(double position_in_radians);
 

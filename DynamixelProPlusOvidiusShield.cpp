@@ -6,7 +6,6 @@
 #include "Arduino.h"
 #include <DynamixelShield.h>
 #include <Dynamixel2Arduino.h>
-#include <Dynamixel2Arduino.h>
 #include "DynamixelProPlusOvidiusShield.h"
 
 // Include Motor Configuration files from folder ~/Arduino/libraries/
@@ -18,6 +17,9 @@
 using namespace std;
 using namespace ControlTableItem;
 
+DYNAMIXEL::InfoSyncWriteInst_t sw_gp_infos;
+DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_gp[DXL_ID_SIZE];
+
 // Constructor
 DynamixelProPlusOvidiusShield::DynamixelProPlusOvidiusShield(uint8_t *DxlIDs){
 
@@ -27,54 +29,171 @@ DynamixelProPlusOvidiusShield::DynamixelProPlusOvidiusShield(uint8_t *DxlIDs){
 }
 
 // =========================================================================================================== //
+bool DynamixelProPlusOvidiusShield::setDynamixelsTorqueON(uint8_t *DxlIDs, int DxlIds_size, Dynamixel2Arduino dxl)
+{
+    for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++)
+    {
+        dxl.torqueOn(DxlIDs[dxl_cnt]);
+    }
 
-bool DynamixelProPlusOvidiusShield::blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times)
+    return true;
+}
+
+bool DynamixelProPlusOvidiusShield::setDynamixelsTorqueOFF(uint8_t *DxlIDs, int DxlIds_size, Dynamixel2Arduino dxl)
+{
+    for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++)
+    {
+        dxl.torqueOff(DxlIDs[dxl_cnt]);
+    }
+
+    return true;
+}
+// =========================================================================================================== //
+
+bool DynamixelProPlusOvidiusShield::setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, Dynamixel2Arduino dxl)
+{
+ /*
+  *  Sets value to LED of Dynamixels given the ID numbers and the desired color(as array 3 elements)
+  */
+ bool command_execution_success;
+
+// 1. turns off led
+for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
+        dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], 0); // write RED VALUE to DXL Control Table
+        dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], 0); // write GREEN VALUE to DXL Control Table
+        dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], 0); // write BLUE VALUE to DXL Control Table
+        unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 50){} // waits 500 milliseconds
+}
+// 1. sets s[ecified color value
+for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
+        dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], led_indicator[0]); // write RED VALUE to DXL Control Table
+        dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], led_indicator[1]); // write GREEN VALUE to DXL Control Table
+        dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], led_indicator[2]); // write BLUE VALUE to DXL Control Table
+        unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 500){} // waits 500 milliseconds
+}
+
+return true;
+}
+// =========================================================================================================== //
+
+
+bool DynamixelProPlusOvidiusShield::blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl)
 {
  /*
   *  Blinks Dynamixels given the ID numbers and the desired color(as array 3 elements) and time interval/times of blink
   *  No timer interrupt used here
   */
+    bool command_execution_success;
+    unsigned long time_now_millis;
+    unsigned char turn_off_led[] = {0, 0, 0};
 
+    for(int times_cnt = 0; times_cnt < times; times_cnt++) {
+        // leds off
+        setDynamixelLeds(DxlIDs, DxlIds_size, turn_off_led, dxl);
+        // delay
+        time_now_millis = millis(); while(millis() < time_now_millis + interval){} // waits interval milliseconds
+        // leds on
+        setDynamixelLeds(DxlIDs, DxlIds_size, led_indicator, dxl);
+        // delay
+        time_now_millis = millis(); while(millis() < time_now_millis + interval){} // waits interval milliseconds
+    }
 
+    return true;
 }
-
 // =========================================================================================================== //
 
 // Ping Dynamixels
-bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, DynamixelShield dxl) {
-
+bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_size,int *error_code, Dynamixel2Arduino dxl) {
 /*
  *  Pings Connected Dynamixels given the correct ID number as set using thw Wizard Software
  */
-    Serial.println("[    INFO    ]      Executing: pingDynamixels");
+    unsigned char ping_indicator[DXL_ID_SIZE];
+    bool dxl_comm_result;
+    int dxl_model_number[DXL_ID_SIZE];
 
-  for(int id_count = 0; id_count < DxlIds_size; id_count++){
-        dxl_comm_result = dxl.ping(DxlIDs[id_count]);
-        if (dxl_comm_result == false)
-        {
-            Serial.print("[   ERROR   ]   Ping of Dynamixel:"); Serial.print(DxlIDs[id_count]); Serial.println("    FAILED  ");
-            return false;
-        }
-        else
-        {
-        ping_indicator[0] = 0;    //R
-        ping_indicator[1] = 255;  //G
-        ping_indicator[2] = 0;    //B
-        dxl.writeControlTableItem(LED_GREEN, DxlIDs[id_count], ping_indicator[1]); // write GREEN VALUE to DXL Control Table
-        //dxl.ledOn(DXL_ID);
-        delay(500);
-        dxl.writeControlTableItem(LED_GREEN, DxlIDs[id_count], 0);
-            
-            dxl.writeControlTableItem(LED_GREEN, DxlIDs[id_count], ping_indicator[1]); // write GREEN VALUE to DXL Control Table
-            // Print serial monitor message
-            Serial.print("[ID:"); Serial.print(DxlIDs[id_count]); Serial.print("] ping Succeeded. Dynamixel model number : "); Serial.println(dxl_model_number[id_count]);
-        }
-    
+    for(int id_count = 0; id_count < DxlIds_size; id_count++){
+            dxl_comm_result = dxl.ping(DxlIDs[id_count]);
+            if (dxl_comm_result == false)
+            {
+                //return false;
+                delay(500);
+            }
+            else
+            {
+                ping_indicator[0] = 0;    //R
+                ping_indicator[1] = 255;  //G
+                ping_indicator[2] = 0;    //B
+
+                unsigned long ping_interval = 500;
+                int ping_times = 4;
+
+                dxl_comm_result = DynamixelProPlusOvidiusShield::blinkDynamixelLeds(DxlIDs, DxlIds_size,ping_indicator, ping_interval, ping_times, dxl);
+
+            }
+        
+    }
+
+  bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+  if (function_state)
+  {
+     return true;
   }
-
-  return true;
+  else
+  {
+      return false;
+  }
+  
 }
 
+// =========================================================================================================== //
+bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array, DynamixelShield dxl) {
+/*
+ *  Sends Goal Position to pinged Dynamixels and moves the motor! 
+ */
+    // Default for Goal Position
+    sw_gp_infos.packet.p_buf = nullptr;
+    sw_gp_infos.packet.is_completed = false;
+    sw_gp_infos.addr = ADDR_PRO_GOAL_POSITION;
+    sw_gp_infos.addr_length = LEN_PRO_GOAL_POSITION;
+    sw_gp_infos.p_xels = info_xels_sw_gp;
+    sw_gp_infos.xel_count = 0;
+
+    // Give desired values
+    for(int id_count = 0; id_count < DxlIds_size; id_count++){
+        SW_Data_Array[id_count].goal_position = Desired_Goal_Position[id_count];
+
+        info_xels_sw_gp[id_count].id = DxlIDs[id_count];
+        info_xels_sw_gp[id_count].p_data = (uint8_t*)&SW_Data_Array[id_count].goal_position;
+        sw_gp_infos.xel_count++;
+    }
+    sw_gp_infos.is_info_changed = true;
+
+    // Moves motors
+    dxl.syncWrite(&sw_gp_infos);
+    delay(1000);
+}
+// =========================================================================================================== //
+
+
+// =========================================================================================================== //
+//                                              AUXILIARY FUNCTIONS
+// =========================================================================================================== //
+
+bool DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl)
+{
+    *error_code = dxl.getLastLibErrCode();
+
+    if ( *error_code == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+    
+    
+}
 
 // =========================================================================================================== //
 
