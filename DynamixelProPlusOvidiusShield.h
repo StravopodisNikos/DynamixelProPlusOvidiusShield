@@ -67,7 +67,7 @@ class DynamixelProPlusOvidiusShield
 
     bool pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, int *error_code, Dynamixel2Arduino dxl);
 
-    bool syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array, DynamixelShield dxl);
+    bool syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
 
     // AUXILIARY FUNCTIONS
     bool check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl);

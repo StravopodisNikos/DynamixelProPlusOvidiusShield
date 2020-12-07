@@ -55,22 +55,23 @@ bool DynamixelProPlusOvidiusShield::setDynamixelLeds(uint8_t *DxlIDs, int DxlIds
  /*
   *  Sets value to LED of Dynamixels given the ID numbers and the desired color(as array 3 elements)
   */
- bool command_execution_success;
-
-// 1. turns off led
-for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
-        dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], 0); // write RED VALUE to DXL Control Table
-        dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], 0); // write GREEN VALUE to DXL Control Table
-        dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], 0); // write BLUE VALUE to DXL Control Table
-        unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 50){} // waits 500 milliseconds
-}
-// 1. sets s[ecified color value
-for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
-        dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], led_indicator[0]); // write RED VALUE to DXL Control Table
-        dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], led_indicator[1]); // write GREEN VALUE to DXL Control Table
-        dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], led_indicator[2]); // write BLUE VALUE to DXL Control Table
-        unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 500){} // waits 500 milliseconds
-}
+    bool command_execution_success;
+    /*
+    // 1. turns off led
+    for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
+            dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], 0); // write RED VALUE to DXL Control Table
+            dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], 0); // write GREEN VALUE to DXL Control Table
+            dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], 0); // write BLUE VALUE to DXL Control Table
+            unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 500){} // waits 500 milliseconds
+    }*/
+    // 1. sets specified color value
+    for(int dxl_cnt = 0; dxl_cnt < DxlIds_size; dxl_cnt++) {
+            dxl.writeControlTableItem(LED_RED, DxlIDs[dxl_cnt], led_indicator[0]); // write RED VALUE to DXL Control Table
+            dxl.writeControlTableItem(LED_GREEN, DxlIDs[dxl_cnt], led_indicator[1]); // write GREEN VALUE to DXL Control Table
+            dxl.writeControlTableItem(LED_BLUE, DxlIDs[dxl_cnt], led_indicator[2]); // write BLUE VALUE to DXL Control Table
+            
+    }
+    //unsigned long time_now_millis = millis(); while(millis() < time_now_millis + 500){} // waits 500 milliseconds
 
 return true;
 }
@@ -89,11 +90,11 @@ bool DynamixelProPlusOvidiusShield::blinkDynamixelLeds(uint8_t *DxlIDs, int DxlI
 
     for(int times_cnt = 0; times_cnt < times; times_cnt++) {
         // leds off
-        setDynamixelLeds(DxlIDs, DxlIds_size, turn_off_led, dxl);
+        DynamixelProPlusOvidiusShield::setDynamixelLeds(DxlIDs, DxlIds_size, turn_off_led, dxl);
         // delay
         time_now_millis = millis(); while(millis() < time_now_millis + interval){} // waits interval milliseconds
         // leds on
-        setDynamixelLeds(DxlIDs, DxlIds_size, led_indicator, dxl);
+        DynamixelProPlusOvidiusShield::setDynamixelLeds(DxlIDs, DxlIds_size, led_indicator, dxl);
         // delay
         time_now_millis = millis(); while(millis() < time_now_millis + interval){} // waits interval milliseconds
     }
@@ -125,7 +126,7 @@ bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_s
                 ping_indicator[2] = 0;    //B
 
                 unsigned long ping_interval = 500;
-                int ping_times = 4;
+                int ping_times = 1;
 
                 dxl_comm_result = DynamixelProPlusOvidiusShield::blinkDynamixelLeds(DxlIDs, DxlIds_size,ping_indicator, ping_interval, ping_times, dxl);
 
@@ -146,9 +147,9 @@ bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_s
 }
 
 // =========================================================================================================== //
-bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array, DynamixelShield dxl) {
+bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl) {
 /*
- *  Sends Goal Position to pinged Dynamixels and moves the motor! 
+ *  Sends Goal Position to pinged Dynamixels and moves the motor!  Main .ino file must wait depending trajectory execution time!
  */
     // Default for Goal Position
     sw_gp_infos.packet.p_buf = nullptr;
@@ -170,7 +171,16 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlID
 
     // Moves motors
     dxl.syncWrite(&sw_gp_infos);
-    delay(1000);
+
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    if (function_state)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 // =========================================================================================================== //
 
