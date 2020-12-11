@@ -13,12 +13,15 @@
 #include <motorIDs.h>                               
 #include <contolTableItems_LimitValues.h>
 #include <StepperMotorSettings.h>
+#include <Array.h>
 
 using namespace std;
 using namespace ControlTableItem;
 
 DYNAMIXEL::InfoSyncWriteInst_t sw_gp_infos;
 DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_gp[DXL_ID_SIZE];
+
+const double pi              = 3.14159265359;
 
 // Constructor
 DynamixelProPlusOvidiusShield::DynamixelProPlusOvidiusShield(uint8_t *DxlIDs){
@@ -207,9 +210,9 @@ bool DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(int *error_code, Dyna
 
 // =========================================================================================================== //
 
-uint32_t DynamixelProPlusOvidiusShield::convertRadian2DxlPulses(double position_in_radians)
+int32_t DynamixelProPlusOvidiusShield::convertRadian2DxlPulses(double position_in_radians)
 {
-    uint32_t position_in_dxl_pulses;
+    int32_t position_in_dxl_pulses;
     //double position_in_radians;
 
     if (position_in_radians == 0)
@@ -218,7 +221,7 @@ uint32_t DynamixelProPlusOvidiusShield::convertRadian2DxlPulses(double position_
     }
     else 
     {
-        position_in_dxl_pulses = (position_in_radians * DXL_RESOLUTION)/PI;
+        position_in_dxl_pulses = (position_in_radians * DXL_RESOLUTION) / pi;
     }
 
 return position_in_dxl_pulses;
@@ -226,7 +229,7 @@ return position_in_dxl_pulses;
   
 // =========================================================================================================== //
 
-double DynamixelProPlusOvidiusShield::convertDxlPulses2Radian(uint32_t position_in_dxl_pulses)
+double DynamixelProPlusOvidiusShield::convertDxlPulses2Radian(int32_t position_in_dxl_pulses)
 {
     double position_in_radians;
     
@@ -236,7 +239,7 @@ double DynamixelProPlusOvidiusShield::convertDxlPulses2Radian(uint32_t position_
     }
     else
     {
-        position_in_radians = (double) (position_in_dxl_pulses * PI) / DXL_RESOLUTION ;
+        position_in_radians = (double) (position_in_dxl_pulses * pi) / DXL_RESOLUTION ;
     }
     
     return position_in_radians;
@@ -264,3 +267,70 @@ unsigned long DynamixelProPlusOvidiusShield::calculateDxlExecTime(int32_t PV, in
 
 // =========================================================================================================== //
 
+//bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta, double * rel_dpos_dxl, double & max_rel_dpos, int32_t & max_rel_dpos_pulses, int * error_code)
+bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta)
+{
+    /*
+     *  All units are [pulses] and time in [ms]
+     *  Returns PA(Profile Acceleration) for given Texec and Profile Velocity)
+     */
+/*
+    // take only absolute value
+    double abs_rel_dpos_dxl[DXL_MOTORS];
+
+    for (size_t i = 0; i < DXL_MOTORS; i++)
+    {
+        abs_rel_dpos_dxl[i] = abs(rel_dpos_dxl[i]);
+    }
+    
+    // define the array type
+    Array<double> array = Array<double>(abs_rel_dpos_dxl,DXL_MOTORS);
+
+    // convert Txec[sec] to [millis] Texec_millis!
+    int32_t Texec_millis = Texec * 1000;
+
+    max_rel_dpos = array.getMax();
+    // convert relative angular displacement [rad] to [pulses]
+    max_rel_dpos_pulses = DynamixelProPlusOvidiusShield::convertRadian2DxlPulses(max_rel_dpos);
+
+    uint64_t factor1 = 600 * DXL_RESOLUTION * PV * PV;
+
+    uint64_t factor2 = (DXL_RESOLUTION * PV * Texec_millis ) - (6000000 * max_rel_dpos_pulses) ;
+
+    if (factor2 == 0)
+    {
+        PA = 3992645;                     // exceeds by +1 the maximum accepted value of AccelerationLimit in ControlTableItem -> JUNK VALUE
+        (*error_code) = 15;               // custom error code. max error code was 14 for DynamixelShield  
+        return false;
+    }
+    else
+    {
+        PA =  factor1 / factor2;
+        (*error_code) = 0;
+        return true;
+    }
+*/
+    // convert Ta[sec] to [millis] Ta_millis!
+    int32_t Ta_millis = Ta * 1000;
+    PA = (600 * PV) / Ta_millis;
+    return true;
+}
+// =========================================================================================================== //
+
+double DynamixelProPlusOvidiusShield::convertDxlVelUnits2RadPsec(int32_t dxlVunit)
+{
+    // 1 [dxlVunit] -> 0.01 [rev/min] -> 0.00104719755 [rad/sec]
+
+    double dxlVunit_radsec = 0.00104719755 * dxlVunit;
+
+    return dxlVunit_radsec;
+}
+
+double DynamixelProPlusOvidiusShield::convertDxlAccelUnits2RadPsec2(int32_t dxlAunit)
+{
+    // 1 [dxlAunit] -> 1 [rev/min2] ->  0.00174532925199433 [rad/sec2]
+    double dxlAunit_radsec2 = 0.00104719755 * dxlAunit;
+
+    return dxlAunit_radsec2;
+}
+// =========================================================================================================== //

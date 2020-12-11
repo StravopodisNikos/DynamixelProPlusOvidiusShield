@@ -9,6 +9,7 @@
 #include "Arduino.h"
 #include <DynamixelShield.h>
 #include <Dynamixel2Arduino.h>
+#include <Array.h>
 
 using namespace std;
 using namespace ControlTableItem;
@@ -19,11 +20,11 @@ const int DXL_ID_SIZE = 3;                            // Must be configured base
 extern int dxl_comm_result;                                                               // Communication result
 extern bool dxl_addparam_result;                                                          // addParam result
 extern bool dxl_getdata_result;                                                           // GetParam result
-extern bool return_function_state;
+//extern bool return_function_state;
 extern uint8_t dxl_error; 
 extern uint16_t dxl_model_number[];
-extern uint32_t dxl_present_position[];
-extern uint32_t dxl_goal_position[];
+extern int32_t dxl_present_position[];
+extern int32_t dxl_goal_position[];
 extern uint8_t dxl_ledBLUE_value[];
 extern uint8_t dxl_ledGREEN_value[];
 extern uint8_t dxl_ledRED_value[];
@@ -72,11 +73,18 @@ class DynamixelProPlusOvidiusShield
     // AUXILIARY FUNCTIONS
     bool check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl);
 
-    uint32_t convertRadian2DxlPulses(double position_in_radians);
+    int32_t convertRadian2DxlPulses(double position_in_radians);
 
-    double convertDxlPulses2Radian(uint32_t position_in_dxl_pulses);
+    double convertDxlPulses2Radian(int32_t position_in_dxl_pulses);
 
     unsigned long calculateDxlExecTime(int32_t PV, int32_t PA, int32_t Pos_i, int32_t Pos_f);
+
+    //bool calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Texec, double * rel_dpos_dxl, double & max_rel_dpos, int32_t & max_rel_dpos_pulses, int * error_code);
+    bool calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta);
+
+    double convertDxlVelUnits2RadPsec(int32_t dxlVunit);
+
+    double convertDxlAccelUnits2RadPsec2(int32_t dxlAunit);
 
 private:
 
