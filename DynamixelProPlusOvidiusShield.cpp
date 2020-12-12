@@ -21,6 +21,12 @@ using namespace ControlTableItem;
 DYNAMIXEL::InfoSyncWriteInst_t sw_gp_infos;
 DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_gp[DXL_ID_SIZE];
 
+DYNAMIXEL::InfoSyncWriteInst_t sw_pv_infos;
+DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_pv[DXL_ID_SIZE];
+
+DYNAMIXEL::InfoSyncWriteInst_t sw_pa_infos;
+DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_pa[DXL_ID_SIZE];
+
 const double pi              = 3.14159265359;
 
 // Constructor
@@ -150,7 +156,7 @@ bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_s
 }
 
 // =========================================================================================================== //
-bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl) {
+bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t_gp *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl) {
 /*
  *  Sends Goal Position to pinged Dynamixels and moves the motor!  Main .ino file must wait depending trajectory execution time!
  */
@@ -187,6 +193,82 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlID
 }
 // =========================================================================================================== //
 
+bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfVel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PV, sw_data_t_pv *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl)
+{
+/*
+ *  Sends ProfileVelocity to pinged Dynamixels!  Main .ino file was given trajectory execution time! Profile Velocity is computed 
+ *  form MATLAB(trajectory planning) and profile_acceleration is computed based on velocity profile characteristics
+ */
+    // Default for Goal Position
+    sw_pv_infos.packet.p_buf = nullptr;
+    sw_pv_infos.packet.is_completed = false;
+    sw_pv_infos.addr = ADDR_PRO_PROF_VEL;
+    sw_pv_infos.addr_length = LEN_PRO_PROF_VEL;
+    sw_pv_infos.p_xels = info_xels_sw_pv;
+    sw_pv_infos.xel_count = 0;
+
+    // Give desired values
+    for(int id_count = 0; id_count < DxlIds_size; id_count++){
+        SW_Data_Array[id_count].profile_velocity = Desired_PV[id_count];
+
+        info_xels_sw_pv[id_count].id = DxlIDs[id_count];
+        info_xels_sw_pv[id_count].p_data = (uint8_t*)&SW_Data_Array[id_count].profile_velocity;
+        sw_pv_infos.xel_count++;
+    }
+    sw_pv_infos.is_info_changed = true;
+
+    // Moves motors
+    dxl.syncWrite(&sw_pv_infos);
+
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    if (function_state)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+// =========================================================================================================== //
+
+bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfAccel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PA, sw_data_t_pa *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl)
+{
+/*
+ *  Sends ProfileAcceleration to pinged Dynamixels!  Main .ino file was given trajectory execution time! Profile Velocity is computed 
+ *  form MATLAB(trajectory planning) and profile_acceleration is computed based on velocity profile characteristics
+ */
+    // Default for Goal Position
+    sw_pa_infos.packet.p_buf = nullptr;
+    sw_pa_infos.packet.is_completed = false;
+    sw_pa_infos.addr = ADDR_PRO_PROF_ACCEL;
+    sw_pa_infos.addr_length = LEN_PRO_PROF_ACCEL;
+    sw_pa_infos.p_xels = info_xels_sw_pa;
+    sw_pa_infos.xel_count = 0;
+
+    // Give desired values
+    for(int id_count = 0; id_count < DxlIds_size; id_count++){
+        SW_Data_Array[id_count].profile_acceleration = Desired_PA[id_count];
+
+        info_xels_sw_pa[id_count].id = DxlIDs[id_count];
+        info_xels_sw_pa[id_count].p_data = (uint8_t*)&SW_Data_Array[id_count].profile_acceleration;
+        sw_pa_infos.xel_count++;
+    }
+    sw_pa_infos.is_info_changed = true;
+
+    // Moves motors
+    dxl.syncWrite(&sw_pa_infos);
+
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    if (function_state)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
 
 // =========================================================================================================== //
 //                                              AUXILIARY FUNCTIONS
@@ -268,11 +350,13 @@ unsigned long DynamixelProPlusOvidiusShield::calculateDxlExecTime(int32_t PV, in
 // =========================================================================================================== //
 
 //bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta, double * rel_dpos_dxl, double & max_rel_dpos, int32_t & max_rel_dpos_pulses, int * error_code)
-bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta)
+bool DynamixelProPlusOvidiusShield::calculateProfVelAccel_preassignedVelTexec(int32_t * PV, int32_t * PA, double * rel_dpos_dxl, double Ta, double Texec, int * error_code)
 {
     /*
      *  All units are [pulses] and time in [ms]
-     *  Returns PA(Profile Acceleration) for given Texec and Profile Velocity)
+     *  Returns final PV(Profile Velocity) and PA(Profile Acceleration) for given from
+     *  1. function: syncPreSetStepperGoalPositionVarStep for Stepper: Ta,Texec
+     *  2. user: desired Profile Velocity PV (it will change according to sync constraints)
      */
 /*
     // take only absolute value
@@ -310,9 +394,130 @@ bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec(int32
         return true;
     }
 */
+    // Profile Velocity and Acceleration can only be >=0 !!!
+    int32_t abs_PV[DXL_MOTORS];
+
+    for (size_t i = 0; i < DXL_MOTORS; i++)
+    {
+        abs_PV[i] = abs(PV[i]);
+    }
+    
+    // define the array type
+    Array<int32_t> array_pv = Array<int32_t>(abs_PV,DXL_MOTORS);
+
+    // Define Acceleration Profile w.r.t the slowest motor
+    int32_t min_PV = array_pv.getMin();
+    int min_PV_index = array_pv.getMinIndex();
+    
     // convert Ta[sec] to [millis] Ta_millis!
     int32_t Ta_millis = Ta * 1000;
-    PA = (600 * PV) / Ta_millis;
+    int32_t min_PA = ( 600 * min_PV) / (  Ta_millis );
+
+    // assign relative values for the rest of the dynamixels! 
+    double final_PV_double[DXL_MOTORS];
+    double final_PA_double[DXL_MOTORS];
+
+    double min_PA_double;
+    double min_PV_double;
+
+    for (size_t i = 0; i < DXL_MOTORS; i++)
+    {
+        if (i==min_PV_index)
+        {
+            PA[i] = abs(min_PA);     // change acceleration of this joint
+            PV[i] = abs(min_PV);     // keep min value of velocity unchanged
+        }
+        else
+        {
+            // calculated based on eq. for (ai,vi) in Melchiorri p.66
+            final_PA_double[i] = ( rel_dpos_dxl[i] / ( Ta * (Texec - Ta) ) );       // must be converted to DxlUnits[pulses]
+            PA[i] = DynamixelProPlusOvidiusShield::convertRadPsec2_2_DxlAccelUnits( abs(final_PA_double[i]));
+
+            final_PV_double[i] = ( rel_dpos_dxl[i] / (Texec - Ta) );               // must be converted to DxlUnits[pulses]
+            PV[i] = DynamixelProPlusOvidiusShield::convertRadPsec2DxlVelUnits(abs(final_PV_double[i]));
+        }
+        
+    }
+
+    return true;
+}
+// =========================================================================================================== //
+
+
+//bool DynamixelProPlusOvidiusShield::calculateProfAccel_preassignedVelTexec2(int32_t PV, int32_t & PA, double Ta, double * rel_dpos_dxl, double & max_rel_dpos, int32_t & max_rel_dpos_pulses, int * error_code)
+bool DynamixelProPlusOvidiusShield::calculateProfVelAccel_preassignedVelTexec2(int32_t * PV, int32_t * PA, double * rel_dpos_dxl, double Ta, double Texec, int * error_code)
+{
+    /*
+     *  All units are [pulses] and time in [ms]
+     *  Returns final PV(Profile Velocity) and PA(Profile Acceleration) for given from
+     *  1. function: syncPreSetStepperGoalPositionVarStep for Stepper: Ta,Texec
+     *  2. user: desired Profile Velocity PV (it will change according to sync constraints)
+     *  The difference with previous function is that calculates PV,PA based on Texec (not only Ta) and largest displacement!!!
+     * 
+     *  * FOR THE TIME I SET PA UNCHANGED!!!! (edited on 12-12-20 must be revised after Xmas!)
+     */
+
+    // take only absolute value
+    double abs_rel_dpos_dxl[DXL_MOTORS];
+
+    for (size_t i = 0; i < DXL_MOTORS; i++)
+    {
+        abs_rel_dpos_dxl[i] = abs(rel_dpos_dxl[i]);
+    }
+    
+    // define the array type
+    Array<double> array = Array<double>(abs_rel_dpos_dxl,DXL_MOTORS);
+
+    // convert Txec[sec] to [millis] Texec_millis!
+    int32_t Texec_millis = Texec * 1000;
+
+    // specify motor with largest relative displacement
+    double max_rel_dpos = array.getMax();
+    int max_rel_dpos_index = array.getMaxIndex();
+
+    int32_t max_rel_dpos_PA;
+    int32_t max_rel_dpos_PV;
+
+    // convert relative angular displacement [rad] to [pulses]
+    int32_t max_rel_dpos_pulses = DynamixelProPlusOvidiusShield::convertRadian2DxlPulses(max_rel_dpos);
+
+    int64_t factor1 = 600 * DXL_RESOLUTION * PV[max_rel_dpos_index] * PV[max_rel_dpos_index];
+
+    int64_t factor2 = (DXL_RESOLUTION * PV[max_rel_dpos_index] * Texec_millis ) - (6000000 * max_rel_dpos_pulses) ;
+
+    if (factor2 == 0)
+    {
+        max_rel_dpos_PA = (int32_t) 3992645;        // exceeds by +1 the maximum accepted value of AccelerationLimit in ControlTableItem -> JUNK VALUE
+        (*error_code) = 15;               // custom error code. max error code was 14 for DynamixelShield  
+    }
+    else
+    {
+        max_rel_dpos_PA = (int32_t) factor1 / factor2;
+        (*error_code) = 0;
+    }
+
+    double final_PV_double[DXL_MOTORS];
+    double final_PA_double[DXL_MOTORS];
+
+    for (size_t i = 0; i < DXL_MOTORS; i++)
+    {
+        if (i==max_rel_dpos_index)
+        {
+            //PA[i] = abs(max_rel_dpos_PA);     // change acceleration of this joint
+            PV[i] = abs(PV[i]);               // keep value of velocity unchanged
+        }
+        else
+        {
+            // calculated based on eq. for (ai,vi) in Melchiorri p.66
+            //final_PA_double[i] = ( rel_dpos_dxl[i] / ( Ta * (Texec - Ta) ) );       // must be converted to DxlUnits[pulses]
+            //PA[i] = DynamixelProPlusOvidiusShield::convertRadPsec2_2_DxlAccelUnits( abs(final_PA_double[i]));
+
+            final_PV_double[i] = ( rel_dpos_dxl[i] / (Texec - Ta) );               // must be converted to DxlUnits[pulses]
+            PV[i] = DynamixelProPlusOvidiusShield::convertRadPsec2DxlVelUnits(abs(final_PV_double[i]));
+        }
+        
+    }
+
     return true;
 }
 // =========================================================================================================== //
@@ -326,11 +531,28 @@ double DynamixelProPlusOvidiusShield::convertDxlVelUnits2RadPsec(int32_t dxlVuni
     return dxlVunit_radsec;
 }
 
+int32_t DynamixelProPlusOvidiusShield::convertRadPsec2DxlVelUnits(double dxlVunit_radsec)
+{
+    // 1 [rad/sec] -> 9.5493 [rev/min] -> 954.93 [0.01 rev/min]
+
+    int32_t dxlVunit = 954.93 * dxlVunit_radsec;
+
+    return dxlVunit;
+}
+
 double DynamixelProPlusOvidiusShield::convertDxlAccelUnits2RadPsec2(int32_t dxlAunit)
 {
     // 1 [dxlAunit] -> 1 [rev/min2] ->  0.00174532925199433 [rad/sec2]
     double dxlAunit_radsec2 = 0.00104719755 * dxlAunit;
 
     return dxlAunit_radsec2;
+}
+
+int32_t DynamixelProPlusOvidiusShield::convertRadPsec2_2_DxlAccelUnits( double dxlAunit_radsec2)
+{
+    // 1 [rad/sec2] -> 9.5493 [rev/min2]
+    int32_t dxlAunit = 9.5493 * dxlAunit_radsec2;
+
+    return dxlAunit;
 }
 // =========================================================================================================== //

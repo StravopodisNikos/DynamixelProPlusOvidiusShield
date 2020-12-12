@@ -39,7 +39,15 @@ extern int32_t dxl_prof_accel[DXL_ID_SIZE];
 // Data Packaging
 typedef struct sw_data{
   int32_t goal_position;
-} __attribute__((packed)) sw_data_t;
+} __attribute__((packed)) sw_data_t_gp;
+
+typedef struct sw_data_pv{
+  int32_t profile_velocity;
+} __attribute__((packed)) sw_data_t_pv;
+
+typedef struct sw_data_pa{
+  int32_t profile_acceleration;
+} __attribute__((packed)) sw_data_t_pa;
 
 // Function Nomenclature
 
@@ -68,7 +76,11 @@ class DynamixelProPlusOvidiusShield
 
     bool pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, int *error_code, Dynamixel2Arduino dxl);
 
-    bool syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
+    bool syncSetDynamixelsGoalPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_Goal_Position, sw_data_t_gp *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
+
+    bool syncSetDynamixelsProfVel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PV, sw_data_t_pv *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
+
+    bool syncSetDynamixelsProfAccel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PA, sw_data_t_pa *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
 
     // AUXILIARY FUNCTIONS
     bool check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl);
@@ -80,11 +92,18 @@ class DynamixelProPlusOvidiusShield
     unsigned long calculateDxlExecTime(int32_t PV, int32_t PA, int32_t Pos_i, int32_t Pos_f);
 
     //bool calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Texec, double * rel_dpos_dxl, double & max_rel_dpos, int32_t & max_rel_dpos_pulses, int * error_code);
-    bool calculateProfAccel_preassignedVelTexec(int32_t PV, int32_t & PA, double Ta);
+    bool calculateProfVelAccel_preassignedVelTexec(int32_t * PV, int32_t * PA, double * rel_dpos_dxl, double Ta, double Texec, int * error_code);
+
+    bool calculateProfVelAccel_preassignedVelTexec2(int32_t * PV, int32_t * PA, double * rel_dpos_dxl, double Ta, double Texec, int * error_code);
 
     double convertDxlVelUnits2RadPsec(int32_t dxlVunit);
 
+    int32_t convertRadPsec2DxlVelUnits(double dxlVunit_radsec);
+
     double convertDxlAccelUnits2RadPsec2(int32_t dxlAunit);
+
+    int32_t convertRadPsec2_2_DxlAccelUnits( double dxlAunit_radsec2);
+
 
 private:
 
