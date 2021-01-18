@@ -27,6 +27,9 @@ DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_pv[DXL_ID_SIZE];
 DYNAMIXEL::InfoSyncWriteInst_t sw_pa_infos;
 DYNAMIXEL::XELInfoSyncWrite_t info_xels_sw_pa[DXL_ID_SIZE];
 
+DYNAMIXEL::InfoSyncReadInst_t sr_pp_infos;
+DYNAMIXEL::XELInfoSyncRead_t info_xels_sr_pp[DXL_ID_SIZE];
+
 const double pi              = 3.14159265359;
 
 // Constructor
@@ -260,6 +263,51 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfAccel(uint8_t *DxlIDs, 
     dxl.syncWrite(&sw_pa_infos);
 
     bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    if (function_state)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// =========================================================================================================== //
+
+bool DynamixelProPlusOvidiusShield::syncGetDynamixelsPresentPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Present_Position, sr_data_t_pp *SR_Data_Array, int *error_code, Dynamixel2Arduino dxl) {
+/*
+ *  Sends Goal Position to pinged Dynamixels and moves the motor!  Main .ino file must wait depending trajectory execution time!
+ */
+    // Default for Present Position
+    sr_pp_infos.packet.p_buf = user_pkt_buf_pp;
+    sr_pp_infos.packet.bud_capacity = user_pkt_buf_cap_pp;
+    sr_pp_infos.packet.is_completed = false;
+    sr_pp_infos.addr = ADDR_PRO_PRESENT_POSITION;
+    sr_pp_infos.addr_length = LEN_PRO_PRESENT_POSITION;
+    sr_pp_infos.p_xels = info_xels_sr_pp;
+    sr_pp_infos.xel_count = 0;
+
+    // Give desired values
+    for(int id_count = 0; id_count < DxlIds_size; id_count++){
+        info_xels_sr_pp[id_count].id = DxlIDs[id_count];
+        info_xels_sr_pp[id_count].p_recv_buf = (uint8_t*)&SR_Data_Array[id_count];
+        sr_pp_infos.xel_count++;
+    }
+    sr_pp_infos.is_info_changed = true;
+
+    // Read from motors
+    bool function_state = dxl.syncRead(&sr_pp_infos);
+    if (function_state)
+    {
+        
+    }
+    else
+    {
+        
+    }
+
+    function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
     if (function_state)
     {
         return true;

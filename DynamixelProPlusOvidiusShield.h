@@ -16,6 +16,7 @@ using namespace ControlTableItem;
 
 extern uint8_t dxl_id[];
 const int DXL_ID_SIZE = 3;                            // Must be configured based on declaration in test_metamorphic_manipulator.ino
+const uint16_t user_pkt_buf_cap = 128;
 
 extern int dxl_comm_result;                                                               // Communication result
 extern bool dxl_addparam_result;                                                          // addParam result
@@ -48,6 +49,10 @@ typedef struct sw_data_pv{
 typedef struct sw_data_pa{
   int32_t profile_acceleration;
 } __attribute__((packed)) sw_data_t_pa;
+
+typedef struct sr_data_pp{
+  int32_t present_position;
+} __attribute__((packed)) sr_data_t_pp;
 
 // Function Nomenclature
 
