@@ -7,7 +7,7 @@
 #define DynamixelProPlusOvidiusShield_h
 
 #include "Arduino.h"
-#include <DynamixelShield.h>
+//#include <DynamixelShield.h>
 #include <Dynamixel2Arduino.h>
 #include <Array.h>
 
@@ -75,9 +75,9 @@ class DynamixelProPlusOvidiusShield
 
     bool setDynamixelsTorqueOFF(uint8_t *DxlIDs, int DxlIds_size, Dynamixel2Arduino dxl);
 
-    bool setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, Dynamixel2Arduino dxl);
+    bool setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, const unsigned char *led_indicator, Dynamixel2Arduino dxl);
 
-    bool blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl);
+    bool blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, const unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl);
 
     bool pingDynamixels(uint8_t *DxlIDs, int DxlIds_size, int *error_code, Dynamixel2Arduino dxl);
 
@@ -86,6 +86,8 @@ class DynamixelProPlusOvidiusShield
     bool syncSetDynamixelsProfVel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PV, sw_data_t_pv *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
 
     bool syncSetDynamixelsProfAccel(uint8_t *DxlIDs, int DxlIds_size, int32_t *Desired_PA, sw_data_t_pa *SW_Data_Array,int *error_code, Dynamixel2Arduino dxl);
+
+    bool syncGetDynamixelsPresentPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Present_Position, sr_data_t_pp *SR_Data_Array, int *error_code, Dynamixel2Arduino dxl); 
 
     // AUXILIARY FUNCTIONS
     bool check_If_OK_for_Errors(int *error_code, Dynamixel2Arduino dxl);

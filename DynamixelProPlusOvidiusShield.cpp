@@ -4,7 +4,7 @@
   */
 
 #include "Arduino.h"
-#include <DynamixelShield.h>
+//#include <DynamixelShield.h>
 #include <Dynamixel2Arduino.h>
 #include "DynamixelProPlusOvidiusShield.h"
 
@@ -62,7 +62,7 @@ bool DynamixelProPlusOvidiusShield::setDynamixelsTorqueOFF(uint8_t *DxlIDs, int 
 }
 // =========================================================================================================== //
 
-bool DynamixelProPlusOvidiusShield::setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, Dynamixel2Arduino dxl)
+bool DynamixelProPlusOvidiusShield::setDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, const unsigned char *led_indicator, Dynamixel2Arduino dxl)
 {
  /*
   *  Sets value to LED of Dynamixels given the ID numbers and the desired color(as array 3 elements)
@@ -90,7 +90,7 @@ return true;
 // =========================================================================================================== //
 
 
-bool DynamixelProPlusOvidiusShield::blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl)
+bool DynamixelProPlusOvidiusShield::blinkDynamixelLeds(uint8_t *DxlIDs, int DxlIds_size, const unsigned char *led_indicator, unsigned long interval, int times, Dynamixel2Arduino dxl)
 {
  /*
   *  Blinks Dynamixels given the ID numbers and the desired color(as array 3 elements) and time interval/times of blink
@@ -146,7 +146,7 @@ bool DynamixelProPlusOvidiusShield::pingDynamixels(uint8_t *DxlIDs, int DxlIds_s
         
     }
 
-  bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+  bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(error_code, dxl);
   if (function_state)
   {
      return true;
@@ -184,7 +184,7 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsGoalPosition(uint8_t *DxlID
     // Moves motors
     dxl.syncWrite(&sw_gp_infos);
 
-    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(error_code, dxl);
     if (function_state)
     {
         return true;
@@ -223,7 +223,7 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfVel(uint8_t *DxlIDs, in
     // Moves motors
     dxl.syncWrite(&sw_pv_infos);
 
-    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(error_code, dxl);
     if (function_state)
     {
         return true;
@@ -262,7 +262,7 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfAccel(uint8_t *DxlIDs, 
     // Moves motors
     dxl.syncWrite(&sw_pa_infos);
 
-    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
+    bool function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(error_code, dxl);
     if (function_state)
     {
         return true;
@@ -275,13 +275,19 @@ bool DynamixelProPlusOvidiusShield::syncSetDynamixelsProfAccel(uint8_t *DxlIDs, 
 
 // =========================================================================================================== //
 
-bool DynamixelProPlusOvidiusShield::syncGetDynamixelsPresentPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Present_Position, sr_data_t_pp *SR_Data_Array, int *error_code, Dynamixel2Arduino dxl) {
+bool DynamixelProPlusOvidiusShield::syncGetDynamixelsPresentPosition(uint8_t *DxlIDs, int DxlIds_size, int32_t *Present_Position, sr_data_t_pp *SR_Data_Array, int *error_code, Dynamixel2Arduino dxl) 
+{
 /*
- *  Sends Goal Position to pinged Dynamixels and moves the motor!  Main .ino file must wait depending trajectory execution time!
+ *Sends Goal Position to pinged Dynamixels and moves the motor!  Main .ino file must wait depending trajectory execution time!
  */
+    bool function_state;
+    const uint16_t user_pkt_buf_cap_pp = 128;
+    uint8_t user_pkt_buf_pp[user_pkt_buf_cap_pp];
+    uint8_t recv_cnt;
+
     // Default for Present Position
     sr_pp_infos.packet.p_buf = user_pkt_buf_pp;
-    sr_pp_infos.packet.bud_capacity = user_pkt_buf_cap_pp;
+    sr_pp_infos.packet.buf_capacity = user_pkt_buf_cap_pp;
     sr_pp_infos.packet.is_completed = false;
     sr_pp_infos.addr = ADDR_PRO_PRESENT_POSITION;
     sr_pp_infos.addr_length = LEN_PRO_PRESENT_POSITION;
@@ -297,17 +303,22 @@ bool DynamixelProPlusOvidiusShield::syncGetDynamixelsPresentPosition(uint8_t *Dx
     sr_pp_infos.is_info_changed = true;
 
     // Read from motors
-    bool function_state = dxl.syncRead(&sr_pp_infos);
-    if (function_state)
+    recv_cnt = dxl.syncRead(&sr_pp_infos);
+    if(recv_cnt > 0)
     {
-        
+        *error_code = 0;
+        function_state = true;
+
+        for(int id_count = 0; id_count<recv_cnt; id_count++)
+        {
+            Present_Position[id_count] = SR_Data_Array[id_count].present_position;
+        }
     }
     else
     {
-        
+        function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(error_code, dxl);
     }
 
-    function_state =  DynamixelProPlusOvidiusShield::check_If_OK_for_Errors(*error_code, dxl);
     if (function_state)
     {
         return true;
@@ -535,12 +546,12 @@ bool DynamixelProPlusOvidiusShield::calculateProfVelAccel_preassignedVelTexec2(i
 
     if (factor2 == 0)
     {
-        max_rel_dpos_PA = (int32_t) 3992645;        // exceeds by +1 the maximum accepted value of AccelerationLimit in ControlTableItem -> JUNK VALUE
+        max_rel_dpos_PA = static_cast<int32_t>(3992645);        // exceeds by +1 the maximum accepted value of AccelerationLimit in ControlTableItem -> JUNK VALUE
         (*error_code) = 15;               // custom error code. max error code was 14 for DynamixelShield  
     }
     else
     {
-        max_rel_dpos_PA = (int32_t) factor1 / factor2;
+        max_rel_dpos_PA = static_cast<int32_t>(factor1 / factor2);
         (*error_code) = 0;
     }
 
@@ -574,7 +585,7 @@ double DynamixelProPlusOvidiusShield::convertDxlVelUnits2RadPsec(int32_t dxlVuni
 {
     // 1 [dxlVunit] -> 0.01 [rev/min] -> 0.00104719755 [rad/sec]
 
-    double dxlVunit_radsec = 0.00104719755 * dxlVunit;
+    double dxlVunit_radsec = static_cast<double> (0.00104719755 * dxlVunit);
 
     return dxlVunit_radsec;
 }
@@ -583,7 +594,7 @@ int32_t DynamixelProPlusOvidiusShield::convertRadPsec2DxlVelUnits(double dxlVuni
 {
     // 1 [rad/sec] -> 9.5493 [rev/min] -> 954.93 [0.01 rev/min]
 
-    int32_t dxlVunit = 954.93 * dxlVunit_radsec;
+    int32_t dxlVunit = static_cast<int32_t>(954.93 * dxlVunit_radsec);
 
     return dxlVunit;
 }
@@ -591,7 +602,7 @@ int32_t DynamixelProPlusOvidiusShield::convertRadPsec2DxlVelUnits(double dxlVuni
 double DynamixelProPlusOvidiusShield::convertDxlAccelUnits2RadPsec2(int32_t dxlAunit)
 {
     // 1 [dxlAunit] -> 1 [rev/min2] ->  0.00174532925199433 [rad/sec2]
-    double dxlAunit_radsec2 = 0.00104719755 * dxlAunit;
+    double dxlAunit_radsec2 = static_cast<double>(0.00104719755 * dxlAunit);
 
     return dxlAunit_radsec2;
 }
@@ -599,7 +610,7 @@ double DynamixelProPlusOvidiusShield::convertDxlAccelUnits2RadPsec2(int32_t dxlA
 int32_t DynamixelProPlusOvidiusShield::convertRadPsec2_2_DxlAccelUnits( double dxlAunit_radsec2)
 {
     // 1 [rad/sec2] -> 9.5493 [rev/min2]
-    int32_t dxlAunit = 9.5493 * dxlAunit_radsec2;
+    int32_t dxlAunit = static_cast<int32_t>(9.5493 * dxlAunit_radsec2);
 
     return dxlAunit;
 }
